@@ -2,7 +2,7 @@
 /*
 Plugin Name: PDF Flipbook
 Description: Create interactive flipbook viewers from PDF documents
-Version: 1.0.2-alpha
+Version: 1.0.3-alpha
 Author: BelongWP
 Requires: Advanced Custom Fields Pro
 */
