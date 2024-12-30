@@ -2,8 +2,8 @@
 /*
 Plugin Name: PDF Flip Book
 Description: Converts PDF documents into responsive and accessible 3D flip books
-Version: 1.0
-Author: Your Name
+Version: 1.0-alpha
+Author: BelongWP
 Requires: Advanced Custom Fields Pro
 */
 
