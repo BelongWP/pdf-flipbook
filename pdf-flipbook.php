@@ -72,7 +72,7 @@ class PDF_Flipbook_Plugin {
         }
 
         // Initialize components via singleton pattern
-        $this->settings = PDF_Flipbook_Settings::get_instance();
+        $this->settings = new PDF_Flipbook_Settings();
         $this->acf_fields = new PDF_Flipbook_ACF_Fields();
         $this->pdf_handler = new PDF_Flipbook_Handler();
     }

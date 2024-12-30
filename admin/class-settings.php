@@ -5,22 +5,19 @@ if (!defined('ABSPATH')) {
 
 class PDF_Flipbook_Settings {
     private static $instance = null;
-
+    
     public static function get_instance() {
         if (null === self::$instance) {
-            self::$instance = new static();
+            self::$instance = new self();
         }
         return self::$instance;
     }
 
-    // Changed from private to protected to allow singleton pattern to work
-    protected function __construct() {
+    // Changed to public constructor
+    public function __construct() {
         add_action('admin_init', array($this, 'settings_init'));
         add_action('init', array($this, 'load_textdomain'));
     }
-
-    // Prevent cloning of the instance
-    protected function __clone() {}
 
     // Prevent unserializing of the instance
     public function __wakeup() {
