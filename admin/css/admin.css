@@ -1,0 +1,111 @@
+.pdf-flipbook-help {
+    max-width: 1200px;
+    margin: 20px 0;
+}
+
+.pdf-flipbook-help-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    border-radius: 4px;
+    margin: 20px 0;
+    padding: 25px;
+}
+
+.pdf-flipbook-help-section h2 {
+    margin-top: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+    color: #1d2327;
+}
+
+.pdf-flipbook-help-section h3 {
+    margin: 1.5em 0 0.5em;
+    color: #2271b1;
+}
+
+.pdf-flipbook-help-section code {
+    background: #f6f7f7;
+    padding: 3px 5px;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.pdf-flipbook-help-section ul {
+    list-style: disc;
+    margin-left: 20px;
+}
+
+.pdf-flipbook-help-section ol {
+    margin-left: 20px;
+}
+
+.pdf-flipbook-help-section li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.pdf-flipbook-help-section dt {
+    font-weight: bold;
+    color: #2271b1;
+    margin-top: 1em;
+}
+
+.pdf-flipbook-help-section dd {
+    margin-left: 20px;
+    margin-bottom: 1em;
+}
+
+.pdf-flipbook-help-section em {
+    color: #666;
+    font-size: 13px;
+}
+
+/* Example boxes */
+.pdf-flipbook-help-section code {
+    display: inline-block;
+    margin: 5px 0;
+    padding: 8px 12px;
+    background: #f6f7f7;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Navigation list styling */
+.pdf-flipbook-help-section .navigation-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.pdf-flipbook-help-section .navigation-options li {
+    background: #f6f7f7;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+/* Best practices section */
+.pdf-flipbook-help-section ul.best-practices li {
+    border-left: 3px solid #2271b1;
+    padding-left: 10px;
+    margin: 10px 0;
+    list-style: none;
+}
+
+/* Troubleshooting section */
+.pdf-flipbook-help-section dl {
+    background: #f6f7f7;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.pdf-flipbook-help-section dt {
+    color: #d63638;
+    margin-top: 15px;
+}
+
+.pdf-flipbook-help-section dt:first-child {
+    margin-top: 0;
+}
