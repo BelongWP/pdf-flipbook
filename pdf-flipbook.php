@@ -124,14 +124,16 @@ class PDF_Flipbook_Plugin {
             'post-new.php?post_type=flipbook'
         );
 
-        // Use the stored static callback for settings page
+        // Get settings instance for the callback
+        $settings = PDF_Flipbook_Settings::get_instance();
+        
         add_submenu_page(
             'pdf-flipbooks',
             'PDF Flipbook Settings',
             'Settings',
             'manage_options',
             'pdf-flipbook-settings',
-            self::$settings_page_callback
+            array($settings, 'render_page')
         );
 
         add_submenu_page(

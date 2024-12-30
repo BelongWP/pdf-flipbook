@@ -1,7 +1,25 @@
 <?php
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 class PDF_Flipbook_Settings {
-    public function __construct() {
+    private static $instance = null;
+
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    private function __construct() {
         add_action('admin_init', array($this, 'settings_init'));
+        add_action('init', array($this, 'load_textdomain'));
+    }
+
+    public function load_textdomain() {
+        load_plugin_textdomain('pdf-flipbook', false, dirname(plugin_basename(__FILE__)) . '/languages');
     }
 
     public function settings_init() {
@@ -24,6 +42,9 @@ class PDF_Flipbook_Settings {
     }
 
     public function render_page() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
         ?>
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
