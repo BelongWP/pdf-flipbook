@@ -118,7 +118,7 @@ class PDF_Flipbook_Plugin {
             'Settings',
             'manage_options',
             'pdf-flipbook-settings',
-            array($this, 'render_settings')
+            array($this->settings, 'render_settings')
         );
 
         add_submenu_page(

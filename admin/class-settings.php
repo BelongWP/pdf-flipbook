@@ -1,22 +1,7 @@
 <?php
-if (!defined('ABSPATH')) {
-    exit;
-}
-
 class PDF_Flipbook_Settings {
     public function __construct() {
-        add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'settings_init'));
-    }
-
-    public function add_admin_menu() {
-        add_options_page(
-            'PDF Flipbook Settings', 
-            'PDF Flipbook', 
-            'manage_options', 
-            'pdf_flipbook_settings', 
-            array($this, 'options_page')
-        );
     }
 
     public function settings_init() {
@@ -38,15 +23,35 @@ class PDF_Flipbook_Settings {
         );
     }
 
+    public function render_page() {
+        ?>
+        <div class="wrap">
+            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            
+            <div class="pdf-flipbook-settings-intro">
+                <p>Configure how your PDF flipbooks are organized. Define document types and their path structures using the variables below:</p>
+                <ul>
+                    <li><code>{year}</code> - Document year (YYYY)</li>
+                    <li><code>{month}</code> - Document month (MM)</li>
+                    <li><code>{issue}</code> - Issue number</li>
+                    <li><code>{title}</code> - Document title</li>
+                    <li><code>{id}</code> - Document ID</li>
+                </ul>
+            </div>
+
+            <form action='options.php' method='post'>
+                <?php
+                settings_fields('pdf_flipbook');
+                do_settings_sections('pdf_flipbook');
+                submit_button();
+                ?>
+            </form>
+        </div>
+        <?php
+    }
+
     public function settings_section_callback() {
-        echo '<p>Configure path structures for different document types. Use the following variables in your paths:</p>';
-        echo '<ul>';
-        echo '<li><code>{year}</code> - Year (YYYY)</li>';
-        echo '<li><code>{month}</code> - Month (MM)</li>';
-        echo '<li><code>{issue}</code> - Issue number</li>';
-        echo '<li><code>{title}</code> - Document title</li>';
-        echo '<li><code>{id}</code> - Document ID</li>';
-        echo '</ul>';
+        echo '<p>Add and configure different document types and their path structures.</p>';
     }
 
     public function document_types_render() {
@@ -98,21 +103,6 @@ class PDF_Flipbook_Settings {
                 });
             });
         </script>
-        <?php
-    }
-
-    public function options_page() {
-        ?>
-        <div class="wrap">
-            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-            <form action='options.php' method='post'>
-                <?php
-                settings_fields('pdf_flipbook');
-                do_settings_sections('pdf_flipbook');
-                submit_button();
-                ?>
-            </form>
-        </div>
         <?php
     }
 }
