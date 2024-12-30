@@ -1,7 +1,7 @@
 <?php
 /*
-Plugin Name: PDF Flip Book
-Description: Converts PDF documents into responsive and accessible 3D flip books
+Plugin Name: PDF Flipbook
+Description: Create interactive flipbook viewers from PDF documents
 Version: 1.0.1-alpha
 Author: BelongWP
 Requires: Advanced Custom Fields Pro
@@ -11,172 +11,129 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class PDF_Flipbook_Plugin
-{
+class PDF_Flipbook_Plugin {
     private static $instance = null;
     private $errors = array();
 
-    public static function get_instance()
-    {
+    public static function get_instance() {
         if (null === self::$instance) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    private function __construct()
-    {
+    private function __construct() {
         // Define constants
         define('PDF_FLIPBOOK_VERSION', '1.0.0');
         define('PDF_FLIPBOOK_PATH', plugin_dir_path(__FILE__));
         define('PDF_FLIPBOOK_URL', plugin_dir_url(__FILE__));
 
-        // Check dependencies
-        add_action('admin_init', array($this, 'check_dependencies'));
-
-        // Initialize plugin if dependencies are met
-        if ($this->check_dependencies()) {
-            $this->init();
-        }
+        // Initialize plugin
+        add_action('init', array($this, 'init'));
+        add_action('admin_menu', array($this, 'setup_admin_menu'));
+        add_action('admin_enqueue_scripts', array($this, 'admin_scripts'));
+        
+        // Add helpful links
+        add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'add_plugin_links'));
     }
 
-    public function check_dependencies()
-    {
+    public function init() {
+        // Check for ACF Pro
         if (!class_exists('ACF')) {
-            add_action('admin_notices', function () {
-?>
+            add_action('admin_notices', function() {
+                ?>
                 <div class="notice notice-error">
-                    <p>PDF Flip Book plugin requires Advanced Custom Fields Pro to be installed and activated.</p>
+                    <p>PDF Flipbook requires Advanced Custom Fields Pro to be installed and activated.</p>
                 </div>
-<?php
+                <?php
             });
-            return false;
-        }
-        return true;
-    }
-
-    private function init()
-    {
-        // Load required files
-        $this->load_files();
-
-        // Initialize components
-        add_action('init', array($this, 'initialize_components'));
-
-        // Register activation hook
-        register_activation_hook(__FILE__, array($this, 'activate'));
-
-        // Enqueue scripts and styles
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
-        add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
-    }
-
-    private function load_files()
-    {
-        $required_files = array(
-            'admin/class-settings.php',
-            'includes/class-pdf-handler.php',
-            'includes/class-acf-fields.php'
-        );
-
-        foreach ($required_files as $file) {
-            $file_path = PDF_FLIPBOOK_PATH . $file;
-            if (file_exists($file_path)) {
-                require_once $file_path;
-            } else {
-                error_log("PDF Flipbook: File not found - " . $file_path);
-                $this->errors[] = "Required file missing: $file";
-            }
+            return;
         }
 
-        if (!empty($this->errors)) {
-            add_action('admin_notices', function () {
-                foreach ($this->errors as $error) {
-                    echo '<div class="notice notice-error"><p>' . esc_html($error) . '</p></div>';
-                }
-            });
-        }
-    }
-
-    public function initialize_components()
-    {
         // Register post type
         register_post_type('flipbook', array(
             'labels' => array(
-                'name' => __('Flip Books'),
-                'singular_name' => __('Flip Book')
+                'name' => 'PDF Flipbooks',
+                'singular_name' => 'PDF Flipbook',
+                'add_new' => 'Add New Flipbook',
+                'add_new_item' => 'Add New PDF Flipbook',
+                'edit_item' => 'Edit PDF Flipbook',
+                'new_item' => 'New PDF Flipbook',
+                'view_item' => 'View PDF Flipbook',
+                'search_items' => 'Search PDF Flipbooks',
+                'not_found' => 'No PDF flipbooks found',
+                'not_found_in_trash' => 'No PDF flipbooks found in trash',
+                'menu_name' => 'PDF Flipbooks'
             ),
             'public' => true,
             'has_archive' => true,
-            'supports' => array('title', 'editor', 'thumbnail'),
-            'menu_icon' => 'dashicons-book',
-            'show_in_rest' => true
+            'supports' => array('title'),
+            'menu_icon' => 'dashicons-book-alt',
+            'show_in_menu' => false, // We'll add this under our custom menu
         ));
 
-        // Initialize components if files were loaded successfully
-        if (empty($this->errors)) {
-            new PDF_Flipbook_Settings();
-            new PDF_Flipbook_ACF_Fields();
-            new PDF_Flipbook_Handler();
-        }
+        // Load required files
+        require_once PDF_FLIPBOOK_PATH . 'includes/class-pdf-handler.php';
+        require_once PDF_FLIPBOOK_PATH . 'includes/class-acf-fields.php';
+        require_once PDF_FLIPBOOK_PATH . 'admin/class-settings.php';
+
+        // Initialize components
+        new PDF_Flipbook_Handler();
+        new PDF_Flipbook_ACF_Fields();
+        new PDF_Flipbook_Settings();
     }
 
-    public function activate()
-    {
-        // Create necessary directories
-        $upload_dir = wp_upload_dir();
-        $flipbook_dir = $upload_dir['basedir'] . '/flipbooks';
-
-        if (!file_exists($flipbook_dir)) {
-            wp_mkdir_p($flipbook_dir);
-        }
-
-        // Initialize default settings
-        $default_settings = array(
-            'document_types' => array(
-                array(
-                    'type' => 'newsletter',
-                    'path' => 'newsletter/{year}/{month}/{issue}'
-                )
-            )
+    public function setup_admin_menu() {
+        // Add main menu
+        add_menu_page(
+            'PDF Flipbooks',
+            'PDF Flipbooks',
+            'manage_options',
+            'pdf-flipbooks',
+            array($this, 'render_dashboard'),
+            'dashicons-book-alt',
+            20
         );
-        add_option('pdf_flipbook_settings', $default_settings);
 
-        // Flush rewrite rules
-        flush_rewrite_rules();
+        // Add submenus
+        add_submenu_page(
+            'pdf-flipbooks',
+            'All Flipbooks',
+            'All Flipbooks',
+            'manage_options',
+            'edit.php?post_type=flipbook'
+        );
+
+        add_submenu_page(
+            'pdf-flipbooks',
+            'Add New Flipbook',
+            'Add New',
+            'manage_options',
+            'post-new.php?post_type=flipbook'
+        );
+
+        add_submenu_page(
+            'pdf-flipbooks',
+            'PDF Flipbook Settings',
+            'Settings',
+            'manage_options',
+            'pdf-flipbook-settings',
+            array($this, 'render_settings')
+        );
+
+        add_submenu_page(
+            'pdf-flipbooks',
+            'PDF Flipbook Help',
+            'Help & Documentation',
+            'manage_options',
+            'pdf-flipbook-help',
+            array($this, 'render_help')
+        );
     }
 
-    public function enqueue_scripts()
-    {
-        if (has_block('pdf-flipbook/viewer') || has_shortcode(get_the_content(), 'flipbook')) {
-            wp_enqueue_style(
-                'pdf-flipbook',
-                PDF_FLIPBOOK_URL . 'assets/css/flipbook.css',
-                array(),
-                PDF_FLIPBOOK_VERSION
-            );
-
-            wp_enqueue_script(
-                'three-js',
-                'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
-                array(),
-                '128',
-                true
-            );
-
-            wp_enqueue_script(
-                'pdf-flipbook',
-                PDF_FLIPBOOK_URL . 'assets/js/flipbook.js',
-                array('jquery', 'three-js'),
-                PDF_FLIPBOOK_VERSION,
-                true
-            );
-        }
-    }
-
-    public function enqueue_admin_scripts($hook)
-    {
-        if ('settings_page_pdf_flipbook_settings' === $hook) {
+    public function admin_scripts($hook) {
+        // Add admin styles and scripts
+        if (strpos($hook, 'pdf-flipbook') !== false || get_post_type() === 'flipbook') {
             wp_enqueue_style(
                 'pdf-flipbook-admin',
                 PDF_FLIPBOOK_URL . 'admin/css/admin.css',
@@ -185,13 +142,129 @@ class PDF_Flipbook_Plugin
             );
         }
     }
+
+    public function render_dashboard() {
+        ?>
+        <div class="wrap pdf-flipbook-dashboard">
+            <h1>PDF Flipbook Dashboard</h1>
+            
+            <div class="pdf-flipbook-quick-actions">
+                <a href="<?php echo admin_url('post-new.php?post_type=flipbook'); ?>" class="button button-primary">
+                    Create New Flipbook
+                </a>
+                <a href="<?php echo admin_url('edit.php?post_type=flipbook'); ?>" class="button">
+                    View All Flipbooks
+                </a>
+                <a href="<?php echo admin_url('admin.php?page=pdf-flipbook-settings'); ?>" class="button">
+                    Configure Settings
+                </a>
+            </div>
+
+            <div class="pdf-flipbook-getting-started">
+                <h2>Getting Started</h2>
+                <ol>
+                    <li>Click "Create New Flipbook" to start a new PDF flipbook</li>
+                    <li>Give your flipbook a title and upload your PDF file</li>
+                    <li>Choose a document type and configure the path settings</li>
+                    <li>Publish your flipbook</li>
+                    <li>Use the shortcode [flipbook id="X"] to display it on any page</li>
+                </ol>
+            </div>
+
+            <?php
+            // Show recent flipbooks
+            $recent_flipbooks = get_posts(array(
+                'post_type' => 'flipbook',
+                'posts_per_page' => 5,
+                'orderby' => 'date',
+                'order' => 'DESC'
+            ));
+
+            if ($recent_flipbooks): ?>
+                <div class="pdf-flipbook-recent">
+                    <h2>Recent Flipbooks</h2>
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Shortcode</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($recent_flipbooks as $flipbook): ?>
+                                <tr>
+                                    <td><?php echo esc_html($flipbook->post_title); ?></td>
+                                    <td><code>[flipbook id="<?php echo $flipbook->ID; ?>"]</code></td>
+                                    <td><?php echo get_the_date('', $flipbook->ID); ?></td>
+                                    <td>
+                                        <a href="<?php echo get_edit_post_link($flipbook->ID); ?>">Edit</a> |
+                                        <a href="<?php echo get_permalink($flipbook->ID); ?>">View</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    public function render_help() {
+        ?>
+        <div class="wrap pdf-flipbook-help">
+            <h1>PDF Flipbook Documentation</h1>
+
+            <div class="pdf-flipbook-help-section">
+                <h2>Creating a New Flipbook</h2>
+                <ol>
+                    <li><strong>Create New:</strong> Click "Add New" in the PDF Flipbooks menu</li>
+                    <li><strong>Title:</strong> Give your flipbook a meaningful title</li>
+                    <li><strong>Upload PDF:</strong> Upload or select your PDF file</li>
+                    <li><strong>Document Type:</strong> Choose how you want to organize this document</li>
+                    <li><strong>Path Settings:</strong> Configure where the file will be stored</li>
+                    <li><strong>Display Options:</strong> Adjust animation speed and thumbnail settings</li>
+                    <li><strong>Publish:</strong> Click Publish to save your flipbook</li>
+                </ol>
+            </div>
+
+            <div class="pdf-flipbook-help-section">
+                <h2>Using Shortcodes</h2>
+                <p>To display a flipbook in any post or page, use the shortcode:</p>
+                <code>[flipbook id="X"]</code>
+                <p>Replace "X" with your flipbook's ID number (found in the All Flipbooks list).</p>
+            </div>
+
+            <div class="pdf-flipbook-help-section">
+                <h2>Document Types and Paths</h2>
+                <p>You can organize your flipbooks using custom path structures:</p>
+                <ul>
+                    <li><code>{year}</code> - The document year</li>
+                    <li><code>{month}</code> - The document month</li>
+                    <li><code>{issue}</code> - Issue number (for newsletters)</li>
+                    <li><code>{title}</code> - The flipbook title</li>
+                    <li><code>{id}</code> - The flipbook ID</li>
+                </ul>
+                <p>Example path: <code>newsletters/{year}/{month}/{issue}</code></p>
+            </div>
+        </div>
+        <?php
+    }
+
+    public function add_plugin_links($links) {
+        $plugin_links = array(
+            '<a href="' . admin_url('admin.php?page=pdf-flipbooks') . '">Dashboard</a>',
+            '<a href="' . admin_url('admin.php?page=pdf-flipbook-help') . '">Documentation</a>'
+        );
+        return array_merge($plugin_links, $links);
+    }
 }
 
 // Initialize the plugin
-function PDF_Flipbook()
-{
+function PDF_Flipbook() {
     return PDF_Flipbook_Plugin::get_instance();
 }
 
-// Start the plugin
 PDF_Flipbook();
