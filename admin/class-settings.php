@@ -8,14 +8,23 @@ class PDF_Flipbook_Settings {
 
     public static function get_instance() {
         if (null === self::$instance) {
-            self::$instance = new self();
+            self::$instance = new static();
         }
         return self::$instance;
     }
 
-    private function __construct() {
+    // Changed from private to protected to allow singleton pattern to work
+    protected function __construct() {
         add_action('admin_init', array($this, 'settings_init'));
         add_action('init', array($this, 'load_textdomain'));
+    }
+
+    // Prevent cloning of the instance
+    protected function __clone() {}
+
+    // Prevent unserializing of the instance
+    public function __wakeup() {
+        throw new \Exception("Cannot unserialize singleton");
     }
 
     public function load_textdomain() {

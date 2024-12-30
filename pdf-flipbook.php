@@ -2,7 +2,7 @@
 /*
 Plugin Name: PDF Flipbook
 Description: Create interactive flipbook viewers from PDF documents
-Version: 1.0.3-alpha
+Version: 1.0.4-alpha
 Author: BelongWP
 Requires: Advanced Custom Fields Pro
 */
@@ -13,9 +13,9 @@ if (!defined('ABSPATH')) {
 
 class PDF_Flipbook_Plugin {
     private static $instance = null;
-    
-    // Static property to store settings page callback
-    private static $settings_page_callback = null;
+    private $settings;
+    private $acf_fields;
+    private $pdf_handler;
 
     public static function get_instance() {
         if (null === self::$instance) {
@@ -43,14 +43,19 @@ class PDF_Flipbook_Plugin {
     }
 
     private function register_hooks() {
-        // Core plugin hooks
+        // Core initialization hooks
         add_action('plugins_loaded', array($this, 'init_plugin'));
         add_action('init', array($this, 'register_post_type'));
-        add_action('admin_menu', array($this, 'setup_admin_menu'));
-        add_action('admin_enqueue_scripts', array($this, 'admin_scripts'));
         
-        // Store settings page callback for later use
-        self::$settings_page_callback = array('PDF_Flipbook_Settings', 'render_page');
+        // Admin-specific hooks
+        if (is_admin()) {
+            add_action('admin_menu', array($this, 'setup_admin_menu'));
+            add_action('admin_enqueue_scripts', array($this, 'admin_scripts'));
+            add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'add_plugin_links'));
+        }
+        
+        // Frontend hooks
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
     }
 
     public function init_plugin() {
@@ -66,10 +71,10 @@ class PDF_Flipbook_Plugin {
             return;
         }
 
-        // Initialize the settings class
-        new PDF_Flipbook_Settings();
-        new PDF_Flipbook_ACF_Fields();
-        new PDF_Flipbook_Handler();
+        // Initialize components via singleton pattern
+        $this->settings = PDF_Flipbook_Settings::get_instance();
+        $this->acf_fields = new PDF_Flipbook_ACF_Fields();
+        $this->pdf_handler = new PDF_Flipbook_Handler();
     }
 
     public function register_post_type() {
@@ -92,6 +97,7 @@ class PDF_Flipbook_Plugin {
             'supports' => array('title'),
             'menu_icon' => 'dashicons-book-alt',
             'show_in_menu' => false,
+            'rewrite' => array('slug' => 'flipbooks'),
         ));
     }
 
@@ -124,16 +130,13 @@ class PDF_Flipbook_Plugin {
             'post-new.php?post_type=flipbook'
         );
 
-        // Get settings instance for the callback
-        $settings = PDF_Flipbook_Settings::get_instance();
-        
         add_submenu_page(
             'pdf-flipbooks',
             'PDF Flipbook Settings',
             'Settings',
             'manage_options',
             'pdf-flipbook-settings',
-            array($settings, 'render_page')
+            array($this->settings, 'render_page')
         );
 
         add_submenu_page(
@@ -154,15 +157,110 @@ class PDF_Flipbook_Plugin {
                 array(),
                 PDF_FLIPBOOK_VERSION
             );
+
+            wp_enqueue_script(
+                'pdf-flipbook-admin',
+                PDF_FLIPBOOK_URL . 'admin/js/admin.js',
+                array('jquery'),
+                PDF_FLIPBOOK_VERSION,
+                true
+            );
+        }
+    }
+
+    public function enqueue_scripts() {
+        if (has_shortcode(get_the_content(), 'flipbook')) {
+            wp_enqueue_style(
+                'pdf-flipbook',
+                PDF_FLIPBOOK_URL . 'assets/css/flipbook.css',
+                array(),
+                PDF_FLIPBOOK_VERSION
+            );
+
+            wp_enqueue_script(
+                'three-js',
+                'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+                array(),
+                '128',
+                true
+            );
+
+            wp_enqueue_script(
+                'pdf-js',
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js',
+                array(),
+                '2.9.359',
+                true
+            );
+
+            wp_enqueue_script(
+                'pdf-flipbook',
+                PDF_FLIPBOOK_URL . 'assets/js/flipbook.js',
+                array('jquery', 'three-js', 'pdf-js'),
+                PDF_FLIPBOOK_VERSION,
+                true
+            );
         }
     }
 
     public function render_dashboard() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
         include PDF_FLIPBOOK_PATH . 'admin/views/dashboard.php';
     }
 
     public function render_help() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
         include PDF_FLIPBOOK_PATH . 'admin/views/help.php';
+    }
+
+    public function add_plugin_links($links) {
+        $plugin_links = array(
+            '<a href="' . admin_url('admin.php?page=pdf-flipbooks') . '">Dashboard</a>',
+            '<a href="' . admin_url('admin.php?page=pdf-flipbook-help') . '">Documentation</a>'
+        );
+        return array_merge($plugin_links, $links);
+    }
+
+    // Activation hook callback
+    public static function activate() {
+        // Create necessary directories
+        $upload_dir = wp_upload_dir();
+        $flipbook_dir = $upload_dir['basedir'] . '/flipbooks';
+        
+        if (!file_exists($flipbook_dir)) {
+            wp_mkdir_p($flipbook_dir);
+        }
+
+        // Create .htaccess for directory protection
+        $htaccess_file = $flipbook_dir . '/.htaccess';
+        if (!file_exists($htaccess_file)) {
+            $htaccess_content = "Options -Indexes\n";
+            file_put_contents($htaccess_file, $htaccess_content);
+        }
+
+        // Initialize default settings
+        $default_settings = array(
+            'document_types' => array(
+                array(
+                    'type' => 'newsletter',
+                    'path' => 'newsletter/{year}/{month}/{issue}'
+                )
+            )
+        );
+        add_option('pdf_flipbook_settings', $default_settings);
+
+        // Flush rewrite rules
+        flush_rewrite_rules();
+    }
+
+    // Deactivation hook callback
+    public static function deactivate() {
+        // Flush rewrite rules
+        flush_rewrite_rules();
     }
 }
 
@@ -170,6 +268,10 @@ class PDF_Flipbook_Plugin {
 function PDF_Flipbook() {
     return PDF_Flipbook_Plugin::get_instance();
 }
+
+// Register activation and deactivation hooks
+register_activation_hook(__FILE__, array('PDF_Flipbook_Plugin', 'activate'));
+register_deactivation_hook(__FILE__, array('PDF_Flipbook_Plugin', 'deactivate'));
 
 // Start the plugin
 PDF_Flipbook();
